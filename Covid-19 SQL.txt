@@ -1,3 +1,5 @@
+-- Imported Covid-19 CSV file into PostgreSQL table, cleaned and analyzed +55,000 rows of data to uncover trends surrounding cases and deaths 
+
 -- Import global_covid_data CSV file into a table in Postgresql using the COPY statement
 
 CREATE TABLE global_covid_data
