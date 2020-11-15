@@ -1,0 +1,97 @@
+-- Import global_covid_data CSV file into a table in Postgresql using the COPY statement
+
+CREATE TABLE global_covid_data
+( continent varchar(50),
+  country varchar(50),
+  day_of_the_month date,
+  total_cases integer,
+  new_cases integer,
+  total_deaths integer,
+  new_deaths integer,
+  total_cases_per_million integer,
+  total_deaths_per_million integer
+);
+
+COPY global_covid_data(continent, country, day_of_the_month, total_cases, new_cases, total_deaths, new_deaths, total_cases_per_million, total_deaths_per_million)
+FROM 'C:\Users\galat\Desktop\Coding\Projects\Global Covid-19 Data\Global_Covid_Data.csv'
+DELIMITER ','
+CSV HEADER;
+
+-- Create views and export views to CSV file using the COPY statement
+
+CREATE VIEW Cases_And_Deaths_Over_Time_Global AS
+SELECT continent, country, day_of_the_month, TO_CHAR(total_cases, '9,999,999') AS Total_Cases, TO_CHAR(total_deaths, '9,999,999') AS Total_Deaths
+FROM global_covid_data
+WHERE Total_Cases IS NOT NULL
+ORDER BY country, day_of_the_month;
+
+COPY (SELECT continent, country, day_of_the_month, TO_CHAR(total_cases, '9,999,999') AS Total_Cases, TO_CHAR(total_deaths, '9,999,999') AS Total_Deaths
+FROM global_covid_data
+WHERE Total_Cases IS NOT NULL
+ORDER BY country, day_of_the_month) 
+TO 'C:\Users\galat\Desktop\Coding\Projects\Global Covid-19 Data\Cases_And_Deaths_Over_Time_Global.csv' 
+DELIMITER ',' 
+CSV HEADER;
+
+CREATE VIEW NEW_CASES_AND_DEATHS_USA AS 
+SELECT day_of_the_month AS Day_of_the_Month, TO_CHAR(new_cases, '9,999,999') AS New_Cases, TO_CHAR(new_deaths, '9,999,999') AS New_Deaths
+FROM global_covid_data
+WHERE country = 'United States'
+ORDER BY Day_of_the_Month;
+
+COPY (SELECT day_of_the_month AS Day_of_the_Month, TO_CHAR(new_cases, '9,999,999') AS New_Cases, TO_CHAR(new_deaths, '9,999,999') AS New_Deaths
+FROM global_covid_data
+WHERE country = 'United States'
+ORDER BY Day_of_the_Month) 
+TO 'C:\Users\galat\Desktop\Coding\Projects\Global Covid-19 Data\New_Cases_And_Deaths_USA.csv' 
+DELIMITER ',' 
+CSV HEADER;
+
+-- Insert new Covid-19 case data
+
+INSERT INTO cases_usa
+(day_of_the_month, total_cases, new_cases)
+SELECT day_of_the_month, total_cases, new_cases
+FROM global_covid_data
+WHERE country = 'United States'
+AND day_of_the_month > '10/31/2020';
+
+-- Update the new cases column in the global_covid_data table
+
+UPDATE global_covid_data
+SET new_cases = 0
+WHERE new_cases IS NULL;
+
+-- New cases in November for US and Brazil
+
+SELECT country, day_of_the_month, new_cases, RANK() OVER (PARTITION BY country ORDER BY new_cases DESC)
+FROM global_covid_data
+WHERE day_of_the_month > '10/31/2020'
+AND country IN ('United States', 'Brazil');
+
+-- Join hospitalization data
+ 
+SELECT gcd.country_id, gcd.country, hu.hospitalizations
+FROM global_covid_data gcd
+INNER JOIN hospitalizations hu
+ON gcd.country_id = hu.country_id
+
+-- Pandemic Severity Index
+
+SELECT 
+	SUM(CASE
+	      WHEN total_cases_per_million BETWEEN 0 AND 1000 THEN 1
+	      ELSE 0
+             END)
+        AS LOW,
+	SUM(CASE
+	      WHEN total_cases_per_million BETWEEN 1001 AND 10000 THEN 1
+	      ELSE 0
+             END)
+        AS MEDIUM,
+	SUM(CASE
+	      WHEN total_cases_per_million > 10000 THEN 1
+	      ELSE 0
+             END)
+        AS HIGH,
+FROM global_covid_data;
