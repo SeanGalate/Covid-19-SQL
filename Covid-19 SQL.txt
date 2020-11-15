@@ -76,7 +76,7 @@ AND country IN ('United States', 'Brazil');
 SELECT gcd.country_id, gcd.country, hu.hospitalizations
 FROM global_covid_data gcd
 INNER JOIN hospitalizations hu
-ON gcd.country_id = hu.country_id
+ON gcd.country_id = hu.country_id;
 
 -- Pandemic Severity Index
 
